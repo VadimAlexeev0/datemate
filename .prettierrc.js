@@ -14,8 +14,8 @@ export default {
 	requirePragma: false,
 	semi: false,
 	singleAttributePerLine: false,
-	singleQuote: true,
-	tabWidth: 2,
+	singleQuote: false,
+	tabWidth: 4,
 	trailingComma: 'all',
 	useTabs: true,
 	overrides: [

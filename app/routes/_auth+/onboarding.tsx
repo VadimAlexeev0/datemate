@@ -21,7 +21,6 @@ import { CheckboxField, ErrorList, Field } from '#app/components/forms.tsx'
 import { Spacer } from '#app/components/spacer.tsx'
 import { StatusButton } from '#app/components/ui/status-button.tsx'
 import { requireAnonymous, sessionKey, signup } from '#app/utils/auth.server.ts'
-import { prisma } from '#app/utils/db.server.ts'
 import { checkHoneypot } from '#app/utils/honeypot.server.ts'
 import { useIsPending } from '#app/utils/misc.tsx'
 import { authSessionStorage } from '#app/utils/session.server.ts'
@@ -71,20 +70,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	checkHoneypot(formData)
 	const submission = await parse(formData, {
 		schema: intent =>
-			SignupFormSchema.superRefine(async (data, ctx) => {
-				const existingUser = await prisma.user.findUnique({
-					where: { username: data.username },
-					select: { id: true },
-				})
-				if (existingUser) {
-					ctx.addIssue({
-						path: ['username'],
-						code: z.ZodIssueCode.custom,
-						message: 'A user already exists with this username',
-					})
-					return
-				}
-			}).transform(async data => {
+			SignupFormSchema.transform(async data => {
 				if (intent !== 'submit') return { ...data, session: null }
 
 				const session = await signup({ ...data, email })

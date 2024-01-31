@@ -27,7 +27,7 @@ import {
 	signupWithConnection,
 } from '#app/utils/auth.server.ts'
 import { ProviderNameSchema } from '#app/utils/connections.tsx'
-import { prisma } from '#app/utils/db.server.ts'
+// import { prisma } from '#app/utils/db.server.ts'
 import { useIsPending } from '#app/utils/misc.tsx'
 import { authSessionStorage } from '#app/utils/session.server.ts'
 import { redirectWithToast } from '#app/utils/toast.server.ts'
@@ -114,20 +114,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	)
 
 	const submission = await parse(formData, {
-		schema: SignupFormSchema.superRefine(async (data, ctx) => {
-			const existingUser = await prisma.user.findUnique({
-				where: { username: data.username },
-				select: { id: true },
-			})
-			if (existingUser) {
-				ctx.addIssue({
-					path: ['username'],
-					code: z.ZodIssueCode.custom,
-					message: 'A user already exists with this username',
-				})
-				return
-			}
-		}).transform(async data => {
+		schema: SignupFormSchema.transform(async data => {
 			const session = await signupWithConnection({
 				...data,
 				email,

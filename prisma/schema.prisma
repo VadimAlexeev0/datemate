@@ -10,56 +10,87 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id       String  @id @default(cuid())
-  email    String  @unique
-  username String  @unique
-  name     String?
+model Match {
+  id          String  @id @default(cuid())
+  username    String? @unique
+  description String?
+  gender      String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  image       UserImage?
-  password    Password?
-  notes       Note[]
-  roles       Role[]
-  sessions    Session[]
-  connections Connection[]
-}
+  images MatchImage[]
 
-model Note {
-  id      String @id @default(cuid())
-  title   String
-  content String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  chats Chat[]
 
   owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   ownerId String
-
-  images NoteImage[]
-
-  // non-unique foreign key
-  @@index([ownerId])
-  // This helps our order by in the user search a LOT
-  @@index([ownerId, updatedAt])
 }
 
-model NoteImage {
-  id          String  @id @default(cuid())
-  altText     String?
+model MatchImage {
+  id          String @id @default(cuid())
   contentType String
   blob        Bytes
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  note   Note   @relation(fields: [noteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  noteId String
+  match   Match  @relation(fields: [matchId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  matchId String
 
   // non-unique foreign key
-  @@index([noteId])
+  @@index([matchId])
+}
+
+model User {
+  id        String @id @default(cuid())
+  email     String @unique
+  firstName String
+  lastName  String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  image       UserImage?
+  password    Password?
+  matches     Match[]
+  roles       Role[]
+  sessions    Session[]
+  connections Connection[]
+}
+
+model Chat {
+  id      String  @id @default(cuid())
+  title   String
+  content String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  match   Match  @relation(fields: [matchId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  matchId String
+
+  images ChatImage[]
+
+  // non-unique foreign key
+  @@index([matchId])
+  // This helps our order by in the user search a LOT
+  @@index([matchId, updatedAt])
+}
+
+model ChatImage {
+  id          String @id @default(cuid())
+  contentType String
+  blob        Bytes
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  chat   Chat   @relation(fields: [chatId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  chatId String
+
+  // non-unique foreign key
+  @@index([chatId])
 }
 
 model UserImage {

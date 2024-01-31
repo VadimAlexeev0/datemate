@@ -27,7 +27,7 @@ import { getNoteImgSrc, useIsPending } from '#app/utils/misc.tsx'
 import { requireUserWithPermission } from '#app/utils/permissions.server.ts'
 import { redirectWithToast } from '#app/utils/toast.server.ts'
 import { userHasPermission, useOptionalUser } from '#app/utils/user.ts'
-import { type loader as notesLoader } from './notes.tsx'
+import { type loader as notesLoader } from './chats.tsx'
 
 export async function loader({ params }: LoaderFunctionArgs) {
 	const note = await prisma.note.findUnique({
@@ -192,8 +192,8 @@ export const meta: MetaFunction<
 	const notesMatch = matches.find(
 		m => m.id === 'routes/users+/$username_+/notes',
 	)
-	const displayName = notesMatch?.data?.owner.name ?? params.username
-	const noteTitle = data?.note.title ?? 'Note'
+	const displayName = notesMatch?.data?.match.username ?? params.username
+	const noteTitle = data?.note.title ?? 'Match'
 	const noteContentsSummary =
 		data && data.note.content.length > 100
 			? data?.note.content.slice(0, 97) + '...'

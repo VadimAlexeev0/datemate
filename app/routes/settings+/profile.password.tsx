@@ -96,7 +96,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	const { newPassword } = submission.value
 
 	await prisma.user.update({
-		select: { username: true },
+		select: { firstName: true },
 		where: { id: userId },
 		data: {
 			password: {

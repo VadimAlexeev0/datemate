@@ -16,11 +16,11 @@ import { StatusButton } from '#app/components/ui/status-button.tsx'
 import { prisma } from '#app/utils/db.server.ts'
 import { sendEmail } from '#app/utils/email.server.ts'
 import { checkHoneypot } from '#app/utils/honeypot.server.ts'
-import { EmailSchema, UsernameSchema } from '#app/utils/user-validation.ts'
+import { EmailSchema } from '#app/utils/user-validation.ts'
 import { prepareVerification } from './verify.tsx'
 
 const ForgotPasswordSchema = z.object({
-	usernameOrEmail: z.union([EmailSchema, UsernameSchema]),
+	email: EmailSchema,
 })
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -30,18 +30,15 @@ export async function action({ request }: ActionFunctionArgs) {
 		schema: ForgotPasswordSchema.superRefine(async (data, ctx) => {
 			const user = await prisma.user.findFirst({
 				where: {
-					OR: [
-						{ email: data.usernameOrEmail },
-						{ username: data.usernameOrEmail },
-					],
+					email: data.email,
 				},
 				select: { id: true },
 			})
 			if (!user) {
 				ctx.addIssue({
-					path: ['usernameOrEmail'],
+					path: ['email'],
 					code: z.ZodIssueCode.custom,
-					message: 'No user exists with this username or email',
+					message: 'No user exists with this email',
 				})
 				return
 			}
@@ -54,18 +51,18 @@ export async function action({ request }: ActionFunctionArgs) {
 	if (!submission.value) {
 		return json({ status: 'error', submission } as const, { status: 400 })
 	}
-	const { usernameOrEmail } = submission.value
+	const { email } = submission.value
 
 	const user = await prisma.user.findFirstOrThrow({
-		where: { OR: [{ email: usernameOrEmail }, { username: usernameOrEmail }] },
-		select: { email: true, username: true },
+		where: { email: email },
+		select: { email: true, firstName: true },
 	})
 
 	const { verifyUrl, redirectTo, otp } = await prepareVerification({
 		period: 10 * 60,
 		request,
 		type: 'reset-password',
-		target: usernameOrEmail,
+		target: email,
 	})
 
 	const response = await sendEmail({
@@ -143,14 +140,14 @@ export default function ForgotPasswordRoute() {
 						<div>
 							<Field
 								labelProps={{
-									htmlFor: fields.usernameOrEmail.id,
+									htmlFor: fields.email.id,
 									children: 'Username or Email',
 								}}
 								inputProps={{
 									autoFocus: true,
-									...conform.input(fields.usernameOrEmail),
+									...conform.input(fields.email),
 								}}
-								errors={fields.usernameOrEmail.errors}
+								errors={fields.email.errors}
 							/>
 						</div>
 						<ErrorList errors={form.errors} id={form.errorId} />

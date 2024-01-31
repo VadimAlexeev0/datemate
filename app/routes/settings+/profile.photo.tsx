@@ -58,8 +58,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		where: { id: userId },
 		select: {
 			id: true,
-			name: true,
-			username: true,
+			firstName: true,
+			lastName: true,
 			image: { select: { id: true } },
 		},
 	})

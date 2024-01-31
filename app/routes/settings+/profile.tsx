@@ -22,7 +22,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	const userId = await requireUserId(request)
 	const user = await prisma.user.findUnique({
 		where: { id: userId },
-		select: { username: true },
+		select: { firstName: true },
 	})
 	invariantResponse(user, 'User not found', { status: 404 })
 	return json({})
@@ -52,10 +52,7 @@ export default function EditUserProfile() {
 			<div className="container">
 				<ul className="flex gap-3">
 					<li>
-						<Link
-							className="text-muted-foreground"
-							to={`/users/${user.username}`}
-						>
+						<Link className="text-muted-foreground" to={`/users/${user.id}`}>
 							Profile
 						</Link>
 					</li>
