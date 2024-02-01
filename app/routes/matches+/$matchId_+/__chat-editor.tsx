@@ -61,7 +61,7 @@ function imageHasId(
 	return image.id != null
 }
 
-const NoteEditorSchema = z.object({
+const ChatEditorSchema = z.object({
 	id: z.string().optional(),
 	matchId: z.string(),
 	title: z.string().min(titleMinLength).max(titleMaxLength),
@@ -78,7 +78,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	)
 
 	const submission = await parse(formData, {
-		schema: NoteEditorSchema.superRefine(async (data, ctx) => {
+		schema: ChatEditorSchema.superRefine(async (data, ctx) => {
 			if (!data.id) return
 
 			const chat = await prisma.chat.findUnique({
@@ -144,7 +144,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		newImages = [],
 	} = submission.value
 
-	const updatedNote = await prisma.chat.upsert({
+	const updatedChat = await prisma.chat.upsert({
 		select: { id: true, matchId: true },
 		where: { id: chatId ?? "__new_chat__" },
 		create: {
@@ -170,7 +170,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		},
 	})
 
-	return redirect(`/matches/${updatedNote.matchId}/chats/${updatedNote.id}`)
+	return redirect(`/matches/${updatedChat.matchId}/chats/${updatedChat.id}`)
 }
 
 export function ChatEditor({
@@ -189,10 +189,10 @@ export function ChatEditor({
 
 	const [form, fields] = useForm({
 		id: "chat-editor",
-		constraint: getFieldsetConstraint(NoteEditorSchema),
+		constraint: getFieldsetConstraint(ChatEditorSchema),
 		lastSubmission: actionData?.submission,
 		onValidate({ formData }) {
-			return parse(formData, { schema: NoteEditorSchema })
+			return parse(formData, { schema: ChatEditorSchema })
 		},
 		defaultValue: {
 			title: chat?.title ?? "",

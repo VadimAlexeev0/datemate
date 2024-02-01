@@ -10,6 +10,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Starter {
+  id String @id @default(cuid())
+
+  text String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  match   Match  @relation(fields: [matchId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  matchId String
+
+  // non-unique foreign key
+  @@index([matchId])
+}
+
 model Match {
   id          String  @id @default(cuid())
   username    String? @unique
@@ -21,7 +36,8 @@ model Match {
 
   images MatchImage[]
 
-  chats Chat[]
+  chats    Chat[]
+  starters Starter[]
 
   owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   ownerId String

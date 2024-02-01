@@ -6,6 +6,7 @@ import { Icon } from "#app/components/ui/icon.tsx"
 import { requireUserId } from "#app/utils/auth.server"
 import { prisma } from "#app/utils/db.server.ts"
 import { cn } from "#app/utils/misc.tsx"
+import { Separator } from "#app/components/ui/separator"
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
 	const userId = await requireUserId(request)
@@ -28,7 +29,6 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 export default function NotesRoute() {
 	const data = useLoaderData<typeof loader>()
 
-	const isOwner = true
 	const ownerDisplayName = data.match.username
 	const navLinkDefaultClassName =
 		"line-clamp-2 block rounded-l-full py-2 pl-8 pr-6 text-base lg:text-xl"
@@ -51,22 +51,38 @@ export default function NotesRoute() {
 							Chat's with {ownerDisplayName}
 						</h1>
 						{/* </Link> */}
+
 						<ul className="overflow-y-auto overflow-x-hidden pb-12">
-							{isOwner ? (
-								<li className="p-1 pr-0">
-									<NavLink
-										to="new"
-										className={({ isActive }) =>
-											cn(
-												navLinkDefaultClassName,
-												isActive && "bg-accent",
-											)
-										}
-									>
-										<Icon name="plus">New Chat</Icon>
-									</NavLink>
-								</li>
-							) : null}
+							<li className="p-1 pr-0">
+								<NavLink
+									to="starters"
+									className={({ isActive }) =>
+										cn(
+											navLinkDefaultClassName,
+											isActive && "bg-accent",
+										)
+									}
+								>
+									<Icon name="rocket">
+										Conversation Starters
+									</Icon>
+								</NavLink>
+							</li>
+							<Separator />
+							<li className="p-1 pr-0">
+								<NavLink
+									to="new"
+									className={({ isActive }) =>
+										cn(
+											navLinkDefaultClassName,
+											isActive && "bg-accent",
+										)
+									}
+								>
+									<Icon name="plus">New Conversation</Icon>
+								</NavLink>
+							</li>
+
 							{data.match.chats.map(chat => (
 								<li key={chat.id} className="p-1 pr-0">
 									<NavLink

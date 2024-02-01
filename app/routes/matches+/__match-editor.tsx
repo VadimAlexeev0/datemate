@@ -202,7 +202,7 @@ export function MatchEditor({
 			username: match?.username ?? "",
 			description: match?.description ?? "",
 			gender: match?.gender ?? "",
-			images: match?.images ?? [{}],
+			images: match?.images ?? [],
 		},
 	})
 	const imageList = useFieldList(form.ref, fields.images)
