@@ -1,4 +1,4 @@
-app = "datemate-v1-0d14"
+app = "datemate"
 primary_region = "lhr"
 kill_signal = "SIGINT"
 kill_timeout = 5
