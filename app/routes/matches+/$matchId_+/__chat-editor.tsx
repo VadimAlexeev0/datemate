@@ -5,10 +5,10 @@ import {
 	useFieldset,
 	useForm,
 	type FieldConfig,
-} from '@conform-to/react'
-import { getFieldsetConstraint, parse } from '@conform-to/zod'
-import { createId as cuid } from '@paralleldrive/cuid2'
-import { type Note, type NoteImage } from '@prisma/client'
+} from "@conform-to/react"
+import { getFieldsetConstraint, parse } from "@conform-to/zod"
+import { createId as cuid } from "@paralleldrive/cuid2"
+import { type Chat, type ChatImage } from "@prisma/client"
 import {
 	unstable_createMemoryUploadHandler as createMemoryUploadHandler,
 	json,
@@ -16,21 +16,19 @@ import {
 	redirect,
 	type ActionFunctionArgs,
 	type SerializeFrom,
-} from '@remix-run/node'
-import { Form, useActionData } from '@remix-run/react'
-import { useRef, useState } from 'react'
-import { z } from 'zod'
-import { GeneralErrorBoundary } from '#app/components/error-boundary.tsx'
-import { floatingToolbarClassName } from '#app/components/floating-toolbar.tsx'
-import { ErrorList, Field, TextareaField } from '#app/components/forms.tsx'
-import { Button } from '#app/components/ui/button.tsx'
-import { Icon } from '#app/components/ui/icon.tsx'
-import { Label } from '#app/components/ui/label.tsx'
-import { StatusButton } from '#app/components/ui/status-button.tsx'
-import { Textarea } from '#app/components/ui/textarea.tsx'
-import { requireUserId } from '#app/utils/auth.server.ts'
-import { prisma } from '#app/utils/db.server.ts'
-import { cn, getNoteImgSrc, useIsPending } from '#app/utils/misc.tsx'
+} from "@remix-run/node"
+import { Form, useActionData } from "@remix-run/react"
+import { useRef, useState } from "react"
+import { z } from "zod"
+import { GeneralErrorBoundary } from "#app/components/error-boundary.tsx"
+import { floatingToolbarClassName } from "#app/components/floating-toolbar.tsx"
+import { ErrorList, Field, TextareaField } from "#app/components/forms.tsx"
+import { Button } from "#app/components/ui/button.tsx"
+import { Icon } from "#app/components/ui/icon.tsx"
+import { Label } from "#app/components/ui/label.tsx"
+import { StatusButton } from "#app/components/ui/status-button.tsx"
+import { prisma } from "#app/utils/db.server.ts"
+import { cn, getNoteImgSrc, useIsPending } from "#app/utils/misc.tsx"
 
 const titleMinLength = 1
 const titleMaxLength = 100
@@ -46,33 +44,33 @@ const ImageFieldsetSchema = z.object({
 		.optional()
 		.refine(file => {
 			return !file || file.size <= MAX_UPLOAD_SIZE
-		}, 'File size must be less than 3MB'),
-	altText: z.string().optional(),
+		}, "File size must be less than 3MB"),
 })
 
 type ImageFieldset = z.infer<typeof ImageFieldsetSchema>
 
 function imageHasFile(
 	image: ImageFieldset,
-): image is ImageFieldset & { file: NonNullable<ImageFieldset['file']> } {
+): image is ImageFieldset & { file: NonNullable<ImageFieldset["file"]> } {
 	return Boolean(image.file?.size && image.file?.size > 0)
 }
 
 function imageHasId(
 	image: ImageFieldset,
-): image is ImageFieldset & { id: NonNullable<ImageFieldset['id']> } {
+): image is ImageFieldset & { id: NonNullable<ImageFieldset["id"]> } {
 	return image.id != null
 }
 
-const NoteEditorSchema = z.object({
+const ChatEditorSchema = z.object({
 	id: z.string().optional(),
+	matchId: z.string(),
 	title: z.string().min(titleMinLength).max(titleMaxLength),
 	content: z.string().min(contentMinLength).max(contentMaxLength),
 	images: z.array(ImageFieldsetSchema).max(5).optional(),
 })
 
 export async function action({ request }: ActionFunctionArgs) {
-	const userId = await requireUserId(request)
+	// const userId = await requireUserId(request)
 
 	const formData = await parseMultipartFormData(
 		request,
@@ -80,17 +78,17 @@ export async function action({ request }: ActionFunctionArgs) {
 	)
 
 	const submission = await parse(formData, {
-		schema: NoteEditorSchema.superRefine(async (data, ctx) => {
+		schema: ChatEditorSchema.superRefine(async (data, ctx) => {
 			if (!data.id) return
-
-			const note = await prisma.note.findUnique({
+			// TODO CHECK if correct match
+			const note = await prisma.chat.findUnique({
 				select: { id: true },
-				where: { id: data.id, ownerId: userId },
+				where: { id: data.id },
 			})
 			if (!note) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
-					message: 'Note not found',
+					message: "Note not found",
 				})
 			}
 		}).transform(async ({ images = [], ...data }) => {
@@ -101,14 +99,12 @@ export async function action({ request }: ActionFunctionArgs) {
 						if (imageHasFile(i)) {
 							return {
 								id: i.id,
-								altText: i.altText,
 								contentType: i.file.type,
 								blob: Buffer.from(await i.file.arrayBuffer()),
 							}
 						} else {
 							return {
 								id: i.id,
-								altText: i.altText,
 							}
 						}
 					}),
@@ -119,9 +115,10 @@ export async function action({ request }: ActionFunctionArgs) {
 						.filter(i => !i.id)
 						.map(async image => {
 							return {
-								altText: image.altText,
 								contentType: image.file.type,
-								blob: Buffer.from(await image.file.arrayBuffer()),
+								blob: Buffer.from(
+									await image.file.arrayBuffer(),
+								),
 							}
 						}),
 				),
@@ -130,7 +127,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		async: true,
 	})
 
-	if (submission.intent !== 'submit') {
+	if (submission.intent !== "submit") {
 		return json({ submission } as const)
 	}
 
@@ -139,18 +136,19 @@ export async function action({ request }: ActionFunctionArgs) {
 	}
 
 	const {
-		id: noteId,
+		id: chatId,
+		matchId,
 		title,
 		content,
 		imageUpdates = [],
 		newImages = [],
 	} = submission.value
 
-	const updatedNote = await prisma.note.upsert({
-		select: { id: true, owner: { select: { username: true } } },
-		where: { id: noteId ?? '__new_note__' },
+	const updatedChat = await prisma.chat.upsert({
+		select: { id: true },
+		where: { id: chatId ?? "__new_chat__" },
 		create: {
-			ownerId: userId,
+			matchId,
 			title,
 			content,
 			images: { create: newImages },
@@ -162,24 +160,25 @@ export async function action({ request }: ActionFunctionArgs) {
 				deleteMany: { id: { notIn: imageUpdates.map(i => i.id) } },
 				updateMany: imageUpdates.map(updates => ({
 					where: { id: updates.id },
-					data: { ...updates, id: updates.blob ? cuid() : updates.id },
+					data: {
+						...updates,
+						id: updates.blob ? cuid() : updates.id,
+					},
 				})),
 				create: newImages,
 			},
 		},
 	})
 
-	return redirect(
-		`/users/${updatedNote.owner.username}/notes/${updatedNote.id}`,
-	)
+	return redirect(`/matches/${matchId}/chats/${updatedChat.id}`)
 }
 
-export function NoteEditor({
-	note,
+export function ChatEditor({
+	chat,
 }: {
-	note?: SerializeFrom<
-		Pick<Note, 'id' | 'title' | 'content'> & {
-			images: Array<Pick<NoteImage, 'id' | 'altText'>>
+	chat?: SerializeFrom<
+		Pick<Chat, "id" | "title" | "content" | "matchId"> & {
+			images: Array<Pick<ChatImage, "id">>
 		}
 	>
 }) {
@@ -187,16 +186,16 @@ export function NoteEditor({
 	const isPending = useIsPending()
 
 	const [form, fields] = useForm({
-		id: 'note-editor',
-		constraint: getFieldsetConstraint(NoteEditorSchema),
+		id: "chat-editor",
+		constraint: getFieldsetConstraint(ChatEditorSchema),
 		lastSubmission: actionData?.submission,
 		onValidate({ formData }) {
-			return parse(formData, { schema: NoteEditorSchema })
+			return parse(formData, { schema: ChatEditorSchema })
 		},
 		defaultValue: {
-			title: note?.title ?? '',
-			content: note?.content ?? '',
-			images: note?.images ?? [{}],
+			title: chat?.title ?? "",
+			content: chat?.content ?? "",
+			images: chat?.images ?? [{}],
 		},
 	})
 	const imageList = useFieldList(form.ref, fields.images)
@@ -215,20 +214,33 @@ export function NoteEditor({
 					rather than the first button in the form (which is delete/add image).
 				*/}
 				<button type="submit" className="hidden" />
-				{note ? <input type="hidden" name="id" value={note.id} /> : null}
+				{chat ? (
+					<>
+						<input type="hidden" name="id" value={chat.id} />
+						<input
+							type="hidden"
+							name="matchId"
+							value={chat.matchId}
+						/>
+					</>
+				) : null}
 				<div className="flex flex-col gap-1">
 					<Field
-						labelProps={{ children: 'Title' }}
+						labelProps={{ children: "Title" }}
 						inputProps={{
 							autoFocus: true,
-							...conform.input(fields.title, { ariaAttributes: true }),
+							...conform.input(fields.title, {
+								ariaAttributes: true,
+							}),
 						}}
 						errors={fields.title.errors}
 					/>
 					<TextareaField
-						labelProps={{ children: 'Content' }}
+						labelProps={{ children: "Content" }}
 						textareaProps={{
-							...conform.textarea(fields.content, { ariaAttributes: true }),
+							...conform.textarea(fields.content, {
+								ariaAttributes: true,
+							}),
 						}}
 						errors={fields.content.errors}
 					/>
@@ -242,12 +254,16 @@ export function NoteEditor({
 								>
 									<button
 										className="absolute right-0 top-0 text-foreground-destructive"
-										{...list.remove(fields.images.name, { index })}
+										{...list.remove(fields.images.name, {
+											index,
+										})}
 									>
 										<span aria-hidden>
 											<Icon name="cross-1" />
-										</span>{' '}
-										<span className="sr-only">Remove image {index + 1}</span>
+										</span>{" "}
+										<span className="sr-only">
+											Remove image {index + 1}
+										</span>
 									</button>
 									<ImageChooser config={image} />
 								</li>
@@ -256,11 +272,13 @@ export function NoteEditor({
 					</div>
 					<Button
 						className="mt-3"
-						{...list.insert(fields.images.name, { defaultValue: {} })}
+						{...list.insert(fields.images.name, {
+							defaultValue: {},
+						})}
 					>
 						<span aria-hidden>
 							<Icon name="plus">Image</Icon>
-						</span>{' '}
+						</span>{" "}
 						<span className="sr-only">Add image</span>
 					</Button>
 				</div>
@@ -274,7 +292,7 @@ export function NoteEditor({
 					form={form.id}
 					type="submit"
 					disabled={isPending}
-					status={isPending ? 'pending' : 'idle'}
+					status={isPending ? "pending" : "idle"}
 				>
 					Submit
 				</StatusButton>
@@ -294,30 +312,35 @@ function ImageChooser({
 	const [previewImage, setPreviewImage] = useState<string | null>(
 		fields.id.defaultValue ? getNoteImgSrc(fields.id.defaultValue) : null,
 	)
-	const [altText, setAltText] = useState(fields.altText.defaultValue ?? '')
 
 	return (
 		<fieldset
 			ref={ref}
 			aria-invalid={Boolean(config.errors?.length) || undefined}
-			aria-describedby={config.errors?.length ? config.errorId : undefined}
+			aria-describedby={
+				config.errors?.length ? config.errorId : undefined
+			}
 		>
 			<div className="flex gap-3">
 				<div className="w-32">
 					<div className="relative h-32 w-32">
 						<label
 							htmlFor={fields.file.id}
-							className={cn('group absolute h-32 w-32 rounded-lg', {
-								'bg-accent opacity-40 focus-within:opacity-100 hover:opacity-100':
-									!previewImage,
-								'cursor-pointer focus-within:ring-2': !existingImage,
-							})}
+							className={cn(
+								"group absolute h-32 w-32 rounded-lg",
+								{
+									"bg-accent opacity-40 focus-within:opacity-100 hover:opacity-100":
+										!previewImage,
+									"cursor-pointer focus-within:ring-2":
+										!existingImage,
+								},
+							)}
 						>
 							{previewImage ? (
 								<div className="relative">
 									<img
 										src={previewImage}
-										alt={altText ?? ''}
+										alt="Preview"
 										className="h-32 w-32 rounded-lg object-cover"
 									/>
 									{existingImage ? null : (
@@ -334,7 +357,7 @@ function ImageChooser({
 							{existingImage ? (
 								<input
 									{...conform.input(fields.id, {
-										type: 'hidden',
+										type: "hidden",
 										ariaAttributes: true,
 									})}
 								/>
@@ -348,7 +371,9 @@ function ImageChooser({
 									if (file) {
 										const reader = new FileReader()
 										reader.onloadend = () => {
-											setPreviewImage(reader.result as string)
+											setPreviewImage(
+												reader.result as string,
+											)
 										}
 										reader.readAsDataURL(file)
 									} else {
@@ -357,17 +382,20 @@ function ImageChooser({
 								}}
 								accept="image/*"
 								{...conform.input(fields.file, {
-									type: 'file',
+									type: "file",
 									ariaAttributes: true,
 								})}
 							/>
 						</label>
 					</div>
 					<div className="min-h-[32px] px-4 pb-3 pt-1">
-						<ErrorList id={fields.file.errorId} errors={fields.file.errors} />
+						<ErrorList
+							id={fields.file.errorId}
+							errors={fields.file.errors}
+						/>
 					</div>
 				</div>
-				<div className="flex-1">
+				{/* <div className="flex-1">
 					<Label htmlFor={fields.altText.id}>Alt Text</Label>
 					<Textarea
 						onChange={e => setAltText(e.currentTarget.value)}
@@ -379,7 +407,7 @@ function ImageChooser({
 							errors={fields.altText.errors}
 						/>
 					</div>
-				</div>
+				</div> */}
 			</div>
 			<div className="min-h-[32px] px-4 pb-3 pt-1">
 				<ErrorList id={config.errorId} errors={config.errors} />

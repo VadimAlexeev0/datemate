@@ -1,7 +1,7 @@
-import { conform, useForm } from '@conform-to/react'
-import { getFieldsetConstraint, parse } from '@conform-to/zod'
-import { invariantResponse } from '@epic-web/invariant'
-import { type SEOHandle } from '@nasa-gcn/remix-seo'
+import { conform, useForm } from "@conform-to/react"
+import { getFieldsetConstraint, parse } from "@conform-to/zod"
+import { invariantResponse } from "@epic-web/invariant"
+import { type SEOHandle } from "@nasa-gcn/remix-seo"
 import {
 	json,
 	redirect,
@@ -9,27 +9,27 @@ import {
 	unstable_parseMultipartFormData,
 	type LoaderFunctionArgs,
 	type ActionFunctionArgs,
-} from '@remix-run/node'
+} from "@remix-run/node"
 import {
 	Form,
 	useActionData,
 	useLoaderData,
 	useNavigation,
-} from '@remix-run/react'
-import { useState } from 'react'
-import { z } from 'zod'
-import { ErrorList } from '#app/components/forms.tsx'
-import { Button } from '#app/components/ui/button.tsx'
-import { Icon } from '#app/components/ui/icon.tsx'
-import { StatusButton } from '#app/components/ui/status-button.tsx'
-import { requireUserId } from '#app/utils/auth.server.ts'
-import { prisma } from '#app/utils/db.server.ts'
+} from "@remix-run/react"
+import { useState } from "react"
+import { z } from "zod"
+import { ErrorList } from "#app/components/forms.tsx"
+import { Button } from "#app/components/ui/button.tsx"
+import { Icon } from "#app/components/ui/icon.tsx"
+import { StatusButton } from "#app/components/ui/status-button.tsx"
+import { requireUserId } from "#app/utils/auth.server.ts"
+import { prisma } from "#app/utils/db.server.ts"
 import {
 	getUserImgSrc,
 	useDoubleCheck,
 	useIsPending,
-} from '#app/utils/misc.tsx'
-import { type BreadcrumbHandle } from './profile.tsx'
+} from "#app/utils/misc.tsx"
+import { type BreadcrumbHandle } from "./profile.tsx"
 
 export const handle: BreadcrumbHandle & SEOHandle = {
 	breadcrumb: <Icon name="avatar">Photo</Icon>,
@@ -39,15 +39,18 @@ export const handle: BreadcrumbHandle & SEOHandle = {
 const MAX_SIZE = 1024 * 1024 * 3 // 3MB
 
 const DeleteImageSchema = z.object({
-	intent: z.literal('delete'),
+	intent: z.literal("delete"),
 })
 
 const NewImageSchema = z.object({
-	intent: z.literal('submit'),
+	intent: z.literal("submit"),
 	photoFile: z
 		.instanceof(File)
-		.refine(file => file.size > 0, 'Image is required')
-		.refine(file => file.size <= MAX_SIZE, 'Image size must be less than 3MB'),
+		.refine(file => file.size > 0, "Image is required")
+		.refine(
+			file => file.size <= MAX_SIZE,
+			"Image size must be less than 3MB",
+		),
 })
 
 const PhotoFormSchema = z.union([DeleteImageSchema, NewImageSchema])
@@ -63,7 +66,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			image: { select: { id: true } },
 		},
 	})
-	invariantResponse(user, 'User not found', { status: 404 })
+	invariantResponse(user, "User not found", { status: 404 })
 	return json({ user })
 }
 
@@ -76,7 +79,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 	const submission = await parse(formData, {
 		schema: PhotoFormSchema.transform(async data => {
-			if (data.intent === 'delete') return { intent: 'delete' }
+			if (data.intent === "delete") return { intent: "delete" }
 			if (data.photoFile.size <= 0) return z.NEVER
 			return {
 				intent: data.intent,
@@ -89,18 +92,18 @@ export async function action({ request }: ActionFunctionArgs) {
 		async: true,
 	})
 
-	if (submission.intent !== 'submit') {
-		return json({ status: 'idle', submission } as const)
+	if (submission.intent !== "submit") {
+		return json({ status: "idle", submission } as const)
 	}
 	if (!submission.value) {
-		return json({ status: 'error', submission } as const, { status: 400 })
+		return json({ status: "error", submission } as const, { status: 400 })
 	}
 
 	const { image, intent } = submission.value
 
-	if (intent === 'delete') {
+	if (intent === "delete") {
 		await prisma.userImage.deleteMany({ where: { userId } })
-		return redirect('/settings/profile')
+		return redirect("/settings/profile")
 	}
 
 	await prisma.$transaction(async $prisma => {
@@ -111,7 +114,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		})
 	})
 
-	return redirect('/settings/profile')
+	return redirect("/settings/profile")
 }
 
 export default function PhotoRoute() {
@@ -123,22 +126,22 @@ export default function PhotoRoute() {
 	const navigation = useNavigation()
 
 	const [form, fields] = useForm({
-		id: 'profile-photo',
+		id: "profile-photo",
 		constraint: getFieldsetConstraint(PhotoFormSchema),
 		lastSubmission: actionData?.submission,
 		onValidate({ formData }) {
 			// otherwise, the best error zod gives us is "Invalid input" which is not
 			// enough
-			if (formData.get('intent') === 'delete') {
+			if (formData.get("intent") === "delete") {
 				return parse(formData, { schema: DeleteImageSchema })
 			}
 			return parse(formData, { schema: NewImageSchema })
 		},
-		shouldRevalidate: 'onBlur',
+		shouldRevalidate: "onBlur",
 	})
 
 	const isPending = useIsPending()
-	const pendingIntent = isPending ? navigation.formData?.get('intent') : null
+	const pendingIntent = isPending ? navigation.formData?.get("intent") : null
 	const lastSubmissionIntent = actionData?.submission.value?.intent
 
 	const [newImageSrc, setNewImageSrc] = useState<string | null>(null)
@@ -154,12 +157,16 @@ export default function PhotoRoute() {
 			>
 				<img
 					src={
-						newImageSrc ?? (data.user ? getUserImgSrc(data.user.image?.id) : '')
+						newImageSrc ??
+						(data.user ? getUserImgSrc(data.user.image?.id) : "")
 					}
 					className="h-52 w-52 rounded-full object-cover"
-					alt={data.user?.name ?? data.user?.username}
+					alt={data.user.firstName}
 				/>
-				<ErrorList errors={fields.photoFile.errors} id={fields.photoFile.id} />
+				<ErrorList
+					errors={fields.photoFile.errors}
+					id={fields.photoFile.id}
+				/>
 				<div className="flex gap-4">
 					{/*
 						We're doing some kinda odd things to make it so this works well
@@ -168,7 +175,7 @@ export default function PhotoRoute() {
 						an image has been selected). Progressive enhancement FTW!
 					*/}
 					<input
-						{...conform.input(fields.photoFile, { type: 'file' })}
+						{...conform.input(fields.photoFile, { type: "file" })}
 						accept="image/*"
 						className="peer sr-only"
 						required
@@ -178,7 +185,10 @@ export default function PhotoRoute() {
 							if (file) {
 								const reader = new FileReader()
 								reader.onload = event => {
-									setNewImageSrc(event.target?.result?.toString() ?? null)
+									setNewImageSrc(
+										event.target?.result?.toString() ??
+											null,
+									)
 								}
 								reader.readAsDataURL(file)
 							}
@@ -198,11 +208,11 @@ export default function PhotoRoute() {
 						type="submit"
 						className="peer-invalid:hidden"
 						status={
-							pendingIntent === 'submit'
-								? 'pending'
-								: lastSubmissionIntent === 'submit'
-									? actionData?.status ?? 'idle'
-									: 'idle'
+							pendingIntent === "submit"
+								? "pending"
+								: lastSubmissionIntent === "submit"
+									? actionData?.status ?? "idle"
+									: "idle"
 						}
 					>
 						Save Photo
@@ -219,22 +229,22 @@ export default function PhotoRoute() {
 							className="peer-valid:hidden"
 							variant="destructive"
 							{...doubleCheckDeleteImage.getButtonProps({
-								type: 'submit',
-								name: 'intent',
-								value: 'delete',
+								type: "submit",
+								name: "intent",
+								value: "delete",
 							})}
 							status={
-								pendingIntent === 'delete'
-									? 'pending'
-									: lastSubmissionIntent === 'delete'
-										? actionData?.status ?? 'idle'
-										: 'idle'
+								pendingIntent === "delete"
+									? "pending"
+									: lastSubmissionIntent === "delete"
+										? actionData?.status ?? "idle"
+										: "idle"
 							}
 						>
 							<Icon name="trash">
 								{doubleCheckDeleteImage.doubleCheck
-									? 'Are you sure?'
-									: 'Delete'}
+									? "Are you sure?"
+									: "Delete"}
 							</Icon>
 						</StatusButton>
 					) : null}
