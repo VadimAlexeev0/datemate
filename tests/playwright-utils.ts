@@ -1,22 +1,23 @@
-import { test as base } from '@playwright/test'
-import { type User as UserModel } from '@prisma/client'
-import * as setCookieParser from 'set-cookie-parser'
+import { test as base } from "@playwright/test"
+import { type User as UserModel } from "@prisma/client"
+import * as setCookieParser from "set-cookie-parser"
 import {
 	getPasswordHash,
 	getSessionExpirationDate,
 	sessionKey,
-} from '#app/utils/auth.server.ts'
-import { prisma } from '#app/utils/db.server.ts'
-import { authSessionStorage } from '#app/utils/session.server.ts'
-import { createUser } from './db-utils.ts'
+} from "#app/utils/auth.server.ts"
+import { prisma } from "#app/utils/db.server.ts"
+import { authSessionStorage } from "#app/utils/session.server.ts"
+import { createUser } from "./db-utils.ts"
 
-export * from './db-utils.ts'
+export * from "./db-utils.ts"
 
 type GetOrInsertUserOptions = {
 	id?: string
-	username?: UserModel['username']
+	firstName?: UserModel["firstName"]
+	lastName?: UserModel["lastName"]
 	password?: string
-	email?: UserModel['email']
+	email?: UserModel["email"]
 }
 
 type User = {
@@ -28,7 +29,8 @@ type User = {
 
 async function getOrInsertUser({
 	id,
-	username,
+	firstName,
+	lastName,
 	password,
 	email,
 }: GetOrInsertUserOptions = {}): Promise<User> {
@@ -40,16 +42,16 @@ async function getOrInsertUser({
 		})
 	} else {
 		const userData = createUser()
-		username ??= userData.username
-		password ??= userData.username
+		firstName ??= userData.firstName
+		lastName ??= userData.lastName
+		password ??= userData.email
 		email ??= userData.email
 		return await prisma.user.create({
 			select,
 			data: {
 				...userData,
 				email,
-				username,
-				roles: { connect: { name: 'user' } },
+				roles: { connect: { name: "user" } },
 				password: { create: { hash: await getPasswordHash(password) } },
 			},
 		})
@@ -89,7 +91,7 @@ export const test = base.extend<{
 			) as any
 			await page
 				.context()
-				.addCookies([{ ...cookieConfig, domain: 'localhost' }])
+				.addCookies([{ ...cookieConfig, domain: "localhost" }])
 			return user
 		})
 		await prisma.user.deleteMany({ where: { id: userId } })

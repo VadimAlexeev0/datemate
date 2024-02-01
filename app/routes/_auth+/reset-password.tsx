@@ -1,28 +1,28 @@
-import { conform, useForm } from '@conform-to/react'
-import { getFieldsetConstraint, parse } from '@conform-to/zod'
-import { invariant } from '@epic-web/invariant'
+import { conform, useForm } from "@conform-to/react"
+import { getFieldsetConstraint, parse } from "@conform-to/zod"
+import { invariant } from "@epic-web/invariant"
 import {
 	json,
 	redirect,
 	type LoaderFunctionArgs,
 	type ActionFunctionArgs,
 	type MetaFunction,
-} from '@remix-run/node'
-import { Form, useActionData, useLoaderData } from '@remix-run/react'
-import { GeneralErrorBoundary } from '#app/components/error-boundary.tsx'
-import { ErrorList, Field } from '#app/components/forms.tsx'
-import { StatusButton } from '#app/components/ui/status-button.tsx'
-import { requireAnonymous, resetUserPassword } from '#app/utils/auth.server.ts'
-import { prisma } from '#app/utils/db.server.ts'
-import { useIsPending } from '#app/utils/misc.tsx'
-import { PasswordAndConfirmPasswordSchema } from '#app/utils/user-validation.ts'
-import { verifySessionStorage } from '#app/utils/verification.server.ts'
-import { type VerifyFunctionArgs } from './verify.tsx'
+} from "@remix-run/node"
+import { Form, useActionData, useLoaderData } from "@remix-run/react"
+import { GeneralErrorBoundary } from "#app/components/error-boundary.tsx"
+import { ErrorList, Field } from "#app/components/forms.tsx"
+import { StatusButton } from "#app/components/ui/status-button.tsx"
+import { requireAnonymous, resetUserPassword } from "#app/utils/auth.server.ts"
+import { prisma } from "#app/utils/db.server.ts"
+import { useIsPending } from "#app/utils/misc.tsx"
+import { PasswordAndConfirmPasswordSchema } from "#app/utils/user-validation.ts"
+import { verifySessionStorage } from "#app/utils/verification.server.ts"
+import { type VerifyFunctionArgs } from "./verify.tsx"
 
-const resetPasswordUsernameSessionKey = 'resetPasswordUsername'
+const resetPasswordUsernameSessionKey = "resetPasswordUsername"
 
 export async function handleVerification({ submission }: VerifyFunctionArgs) {
-	invariant(submission.value, 'submission.value should be defined by now')
+	invariant(submission.value, "submission.value should be defined by now")
 	const target = submission.value.target
 	const user = await prisma.user.findFirst({
 		where: { email: target },
@@ -31,15 +31,16 @@ export async function handleVerification({ submission }: VerifyFunctionArgs) {
 	// we don't want to say the user is not found if the email is not found
 	// because that would allow an attacker to check if an email is registered
 	if (!user) {
-		submission.error.code = ['Invalid code']
-		return json({ status: 'error', submission } as const, { status: 400 })
+		submission.error.code = ["Invalid code"]
+		return json({ status: "error", submission } as const, { status: 400 })
 	}
 
 	const verifySession = await verifySessionStorage.getSession()
 	verifySession.set(resetPasswordUsernameSessionKey, user.firstName)
-	return redirect('/reset-password', {
+	return redirect("/reset-password", {
 		headers: {
-			'set-cookie': await verifySessionStorage.commitSession(verifySession),
+			"set-cookie":
+				await verifySessionStorage.commitSession(verifySession),
 		},
 	})
 }
@@ -49,13 +50,13 @@ const ResetPasswordSchema = PasswordAndConfirmPasswordSchema
 async function requireResetPasswordUsername(request: Request) {
 	await requireAnonymous(request)
 	const verifySession = await verifySessionStorage.getSession(
-		request.headers.get('cookie'),
+		request.headers.get("cookie"),
 	)
 	const resetPasswordUsername = verifySession.get(
 		resetPasswordUsernameSessionKey,
 	)
-	if (typeof resetPasswordUsername !== 'string' || !resetPasswordUsername) {
-		throw redirect('/login')
+	if (typeof resetPasswordUsername !== "string" || !resetPasswordUsername) {
+		throw redirect("/login")
 	}
 	return resetPasswordUsername
 }
@@ -71,25 +72,26 @@ export async function action({ request }: ActionFunctionArgs) {
 	const submission = parse(formData, {
 		schema: ResetPasswordSchema,
 	})
-	if (submission.intent !== 'submit') {
-		return json({ status: 'idle', submission } as const)
+	if (submission.intent !== "submit") {
+		return json({ status: "idle", submission } as const)
 	}
 	if (!submission.value?.password) {
-		return json({ status: 'error', submission } as const, { status: 400 })
+		return json({ status: "error", submission } as const, { status: 400 })
 	}
 	const { password } = submission.value
 
-	await resetUserPassword({ username: resetPasswordUsername, password })
+	await resetUserPassword({ email: resetPasswordUsername, password })
 	const verifySession = await verifySessionStorage.getSession()
-	return redirect('/login', {
+	return redirect("/login", {
 		headers: {
-			'set-cookie': await verifySessionStorage.destroySession(verifySession),
+			"set-cookie":
+				await verifySessionStorage.destroySession(verifySession),
 		},
 	})
 }
 
 export const meta: MetaFunction = () => {
-	return [{ title: 'Reset Password | Epic Notes' }]
+	return [{ title: "Reset Password | Epic Notes" }]
 }
 
 export default function ResetPasswordPage() {
@@ -98,13 +100,13 @@ export default function ResetPasswordPage() {
 	const isPending = useIsPending()
 
 	const [form, fields] = useForm({
-		id: 'reset-password',
+		id: "reset-password",
 		constraint: getFieldsetConstraint(ResetPasswordSchema),
 		lastSubmission: actionData?.submission,
 		onValidate({ formData }) {
 			return parse(formData, { schema: ResetPasswordSchema })
 		},
-		shouldRevalidate: 'onBlur',
+		shouldRevalidate: "onBlur",
 	})
 
 	return (
@@ -112,7 +114,8 @@ export default function ResetPasswordPage() {
 			<div className="text-center">
 				<h1 className="text-h1">Password Reset</h1>
 				<p className="mt-3 text-body-md text-muted-foreground">
-					Hi, {data.resetPasswordUsername}. No worries. It happens all the time.
+					Hi, {data.resetPasswordUsername}. No worries. It happens all
+					the time.
 				</p>
 			</div>
 			<div className="mx-auto mt-16 min-w-full max-w-sm sm:min-w-[368px]">
@@ -120,11 +123,13 @@ export default function ResetPasswordPage() {
 					<Field
 						labelProps={{
 							htmlFor: fields.password.id,
-							children: 'New Password',
+							children: "New Password",
 						}}
 						inputProps={{
-							...conform.input(fields.password, { type: 'password' }),
-							autoComplete: 'new-password',
+							...conform.input(fields.password, {
+								type: "password",
+							}),
+							autoComplete: "new-password",
 							autoFocus: true,
 						}}
 						errors={fields.password.errors}
@@ -132,11 +137,13 @@ export default function ResetPasswordPage() {
 					<Field
 						labelProps={{
 							htmlFor: fields.confirmPassword.id,
-							children: 'Confirm Password',
+							children: "Confirm Password",
 						}}
 						inputProps={{
-							...conform.input(fields.confirmPassword, { type: 'password' }),
-							autoComplete: 'new-password',
+							...conform.input(fields.confirmPassword, {
+								type: "password",
+							}),
+							autoComplete: "new-password",
 						}}
 						errors={fields.confirmPassword.errors}
 					/>
@@ -145,7 +152,9 @@ export default function ResetPasswordPage() {
 
 					<StatusButton
 						className="w-full"
-						status={isPending ? 'pending' : actionData?.status ?? 'idle'}
+						status={
+							isPending ? "pending" : actionData?.status ?? "idle"
+						}
 						type="submit"
 						disabled={isPending}
 					>
