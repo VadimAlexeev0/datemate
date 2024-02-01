@@ -29,13 +29,13 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 		},
 	})
 	invariantResponse(chat, "Not found", { status: 404 })
-	return json({ note: chat })
+	return json({ chat: chat })
 }
 
 export default function NoteEdit() {
 	const data = useLoaderData<typeof loader>()
 
-	return <ChatEditor chat={data.note} />
+	return <ChatEditor chat={data.chat} matchId={data.chat.matchId} />
 }
 
 export function ErrorBoundary() {

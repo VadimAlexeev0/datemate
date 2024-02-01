@@ -1,11 +1,11 @@
-import { invariantResponse } from '@epic-web/invariant'
-import { json, type LoaderFunctionArgs } from '@remix-run/node'
-import { NavLink, Outlet, useLoaderData } from '@remix-run/react'
-import { GeneralErrorBoundary } from '#app/components/error-boundary.tsx'
-import { Icon } from '#app/components/ui/icon.tsx'
-import { requireUserId } from '#app/utils/auth.server'
-import { prisma } from '#app/utils/db.server.ts'
-import { cn } from '#app/utils/misc.tsx'
+import { invariantResponse } from "@epic-web/invariant"
+import { json, type LoaderFunctionArgs } from "@remix-run/node"
+import { NavLink, Outlet, useLoaderData } from "@remix-run/react"
+import { GeneralErrorBoundary } from "#app/components/error-boundary.tsx"
+import { Icon } from "#app/components/ui/icon.tsx"
+import { requireUserId } from "#app/utils/auth.server"
+import { prisma } from "#app/utils/db.server.ts"
+import { cn } from "#app/utils/misc.tsx"
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
 	const userId = await requireUserId(request)
@@ -15,12 +15,12 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 			id: true,
 			username: true,
 			images: { select: { id: true } },
-			// notes: { select: { id: true, title: true } },
+			chats: { select: { id: true, title: true } },
 		},
 		where: { id: params.matchId, ownerId: userId },
 	})
 
-	invariantResponse(match, 'Match not found', { status: 404 })
+	invariantResponse(match, "Match not found", { status: 404 })
 
 	return json({ match })
 }
@@ -31,7 +31,7 @@ export default function NotesRoute() {
 	const isOwner = true
 	const ownerDisplayName = data.match.username
 	const navLinkDefaultClassName =
-		'line-clamp-2 block rounded-l-full py-2 pl-8 pr-6 text-base lg:text-xl'
+		"line-clamp-2 block rounded-l-full py-2 pl-8 pr-6 text-base lg:text-xl"
 
 	return (
 		<main className="container flex h-full min-h-[400px] px-0 pb-12 md:px-8">
@@ -57,27 +57,33 @@ export default function NotesRoute() {
 									<NavLink
 										to="new"
 										className={({ isActive }) =>
-											cn(navLinkDefaultClassName, isActive && 'bg-accent')
+											cn(
+												navLinkDefaultClassName,
+												isActive && "bg-accent",
+											)
 										}
 									>
 										<Icon name="plus">New Chat</Icon>
 									</NavLink>
 								</li>
 							) : null}
-							{/* {data.match.notes.map(note => (
-								<li key={note.id} className="p-1 pr-0">
+							{data.match.chats.map(chat => (
+								<li key={chat.id} className="p-1 pr-0">
 									<NavLink
-										to={note.id}
+										to={chat.id}
 										preventScrollReset
 										prefetch="intent"
 										className={({ isActive }) =>
-											cn(navLinkDefaultClassName, isActive && 'bg-accent')
+											cn(
+												navLinkDefaultClassName,
+												isActive && "bg-accent",
+											)
 										}
 									>
-										{note.title}
+										{chat.title}
 									</NavLink>
 								</li>
-							))} */}
+							))}
 						</ul>
 					</div>
 				</div>

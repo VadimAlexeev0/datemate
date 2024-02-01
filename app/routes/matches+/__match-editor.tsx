@@ -5,10 +5,10 @@ import {
 	useFieldset,
 	useForm,
 	type FieldConfig,
-} from '@conform-to/react'
-import { getFieldsetConstraint, parse } from '@conform-to/zod'
-import { createId as cuid } from '@paralleldrive/cuid2'
-import { type Match, type MatchImage } from '@prisma/client'
+} from "@conform-to/react"
+import { getFieldsetConstraint, parse } from "@conform-to/zod"
+import { createId as cuid } from "@paralleldrive/cuid2"
+import { type Match, type MatchImage } from "@prisma/client"
 import {
 	unstable_createMemoryUploadHandler as createMemoryUploadHandler,
 	json,
@@ -16,19 +16,19 @@ import {
 	redirect,
 	type ActionFunctionArgs,
 	type SerializeFrom,
-} from '@remix-run/node'
-import { Form, useActionData } from '@remix-run/react'
-import { useRef, useState } from 'react'
-import { z } from 'zod'
-import { GeneralErrorBoundary } from '#app/components/error-boundary.tsx'
-import { ErrorList, Field, TextareaField } from '#app/components/forms.tsx'
-import { Button } from '#app/components/ui/button.tsx'
-import { Icon } from '#app/components/ui/icon.tsx'
-import { Label } from '#app/components/ui/label.tsx'
-import { StatusButton } from '#app/components/ui/status-button.tsx'
-import { requireUserId } from '#app/utils/auth.server.ts'
-import { prisma } from '#app/utils/db.server.ts'
-import { cn, getNoteImgSrc, useIsPending } from '#app/utils/misc.tsx'
+} from "@remix-run/node"
+import { Form, useActionData } from "@remix-run/react"
+import { useRef, useState } from "react"
+import { z } from "zod"
+import { GeneralErrorBoundary } from "#app/components/error-boundary.tsx"
+import { ErrorList, Field, TextareaField } from "#app/components/forms.tsx"
+import { Button } from "#app/components/ui/button.tsx"
+import { Icon } from "#app/components/ui/icon.tsx"
+import { Label } from "#app/components/ui/label.tsx"
+import { StatusButton } from "#app/components/ui/status-button.tsx"
+import { requireUserId } from "#app/utils/auth.server.ts"
+import { prisma } from "#app/utils/db.server.ts"
+import { cn, getMatchImgSrc, useIsPending } from "#app/utils/misc.tsx"
 
 const titleMinLength = 1
 const titleMaxLength = 100
@@ -44,20 +44,20 @@ const ImageFieldsetSchema = z.object({
 		.optional()
 		.refine(file => {
 			return !file || file.size <= MAX_UPLOAD_SIZE
-		}, 'File size must be less than 3MB'),
+		}, "File size must be less than 3MB"),
 })
 
 type ImageFieldset = z.infer<typeof ImageFieldsetSchema>
 
 function imageHasFile(
 	image: ImageFieldset,
-): image is ImageFieldset & { file: NonNullable<ImageFieldset['file']> } {
+): image is ImageFieldset & { file: NonNullable<ImageFieldset["file"]> } {
 	return Boolean(image.file?.size && image.file?.size > 0)
 }
 
 function imageHasId(
 	image: ImageFieldset,
-): image is ImageFieldset & { id: NonNullable<ImageFieldset['id']> } {
+): image is ImageFieldset & { id: NonNullable<ImageFieldset["id"]> } {
 	return image.id != null
 }
 
@@ -92,7 +92,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			if (!match) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
-					message: 'Match not found',
+					message: "Match not found",
 				})
 			}
 		}).transform(async ({ images = [], ...data }) => {
@@ -120,7 +120,9 @@ export async function action({ request }: ActionFunctionArgs) {
 						.map(async image => {
 							return {
 								contentType: image.file.type,
-								blob: Buffer.from(await image.file.arrayBuffer()),
+								blob: Buffer.from(
+									await image.file.arrayBuffer(),
+								),
 							}
 						}),
 				),
@@ -129,7 +131,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		async: true,
 	})
 
-	if (submission.intent !== 'submit') {
+	if (submission.intent !== "submit") {
 		return json({ submission } as const)
 	}
 
@@ -148,7 +150,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 	const updatedMatch = await prisma.match.upsert({
 		select: { id: true },
-		where: { id: matchId ?? '__new_match__' },
+		where: { id: matchId ?? "__new_match__" },
 		create: {
 			ownerId: userId,
 			username,
@@ -164,7 +166,10 @@ export async function action({ request }: ActionFunctionArgs) {
 				deleteMany: { id: { notIn: imageUpdates.map(i => i.id) } },
 				updateMany: imageUpdates.map(updates => ({
 					where: { id: updates.id },
-					data: { ...updates, id: updates.blob ? cuid() : updates.id },
+					data: {
+						...updates,
+						id: updates.blob ? cuid() : updates.id,
+					},
 				})),
 				create: newImages,
 			},
@@ -178,8 +183,8 @@ export function MatchEditor({
 	match,
 }: {
 	match?: SerializeFrom<
-		Pick<Match, 'id' | 'username' | 'description' | 'gender'> & {
-			images: Array<Pick<MatchImage, 'id'>>
+		Pick<Match, "id" | "username" | "description" | "gender"> & {
+			images: Array<Pick<MatchImage, "id">>
 		}
 	>
 }) {
@@ -187,16 +192,16 @@ export function MatchEditor({
 	const isPending = useIsPending()
 
 	const [form, fields] = useForm({
-		id: 'match-editor',
+		id: "match-editor",
 		constraint: getFieldsetConstraint(MatchEditorSchema),
 		lastSubmission: actionData?.submission,
 		onValidate({ formData }) {
 			return parse(formData, { schema: MatchEditorSchema })
 		},
 		defaultValue: {
-			username: match?.username ?? '',
-			description: match?.description ?? '',
-			gender: match?.gender ?? '',
+			username: match?.username ?? "",
+			description: match?.description ?? "",
+			gender: match?.gender ?? "",
 			images: match?.images ?? [{}],
 		},
 	})
@@ -216,30 +221,38 @@ export function MatchEditor({
 					rather than the first button in the form (which is delete/add image).
 				*/}
 				<button type="submit" className="hidden" />
-				{match ? <input type="hidden" name="id" value={match.id} /> : null}
+				{match ? (
+					<input type="hidden" name="id" value={match.id} />
+				) : null}
 				<div className="flex flex-col gap-1">
 					<Field
-						labelProps={{ children: 'Name' }}
+						labelProps={{ children: "Name" }}
 						inputProps={{
 							autoFocus: true,
-							...conform.input(fields.username, { ariaAttributes: true }),
+							...conform.input(fields.username, {
+								ariaAttributes: true,
+							}),
 						}}
 						errors={fields.username.errors}
 					/>
 					<Field
-						labelProps={{ children: 'Gender' }}
+						labelProps={{ children: "Gender" }}
 						inputProps={{
-							...conform.input(fields.gender, { ariaAttributes: true }),
+							...conform.input(fields.gender, {
+								ariaAttributes: true,
+							}),
 						}}
 						errors={fields.gender.errors}
 					/>
 					<TextareaField
 						labelProps={{
 							children:
-								'Description (optional only used when no images uploaded)',
+								"Description (optional only used when no images uploaded)",
 						}}
 						textareaProps={{
-							...conform.textarea(fields.description, { ariaAttributes: true }),
+							...conform.textarea(fields.description, {
+								ariaAttributes: true,
+							}),
 						}}
 						errors={fields.description.errors}
 					/>
@@ -253,12 +266,16 @@ export function MatchEditor({
 								>
 									<button
 										className="absolute right-0 top-0 text-foreground-destructive"
-										{...list.remove(fields.images.name, { index })}
+										{...list.remove(fields.images.name, {
+											index,
+										})}
 									>
 										<span aria-hidden>
 											<Icon name="cross-1" />
-										</span>{' '}
-										<span className="sr-only">Remove image {index + 1}</span>
+										</span>{" "}
+										<span className="sr-only">
+											Remove image {index + 1}
+										</span>
 									</button>
 									<ImageChooser config={image} />
 								</li>
@@ -267,11 +284,13 @@ export function MatchEditor({
 					</div>
 					<Button
 						className="mt-3"
-						{...list.insert(fields.images.name, { defaultValue: {} })}
+						{...list.insert(fields.images.name, {
+							defaultValue: {},
+						})}
 					>
 						<span aria-hidden>
 							<Icon name="plus">Image</Icon>
-						</span>{' '}
+						</span>{" "}
 						<span className="sr-only">Add image</span>
 					</Button>
 				</div>
@@ -286,7 +305,7 @@ export function MatchEditor({
 					form={form.id}
 					type="submit"
 					disabled={isPending}
-					status={isPending ? 'pending' : 'idle'}
+					status={isPending ? "pending" : "idle"}
 				>
 					Submit
 				</StatusButton>
@@ -304,25 +323,31 @@ function ImageChooser({
 	const fields = useFieldset(ref, config)
 	const existingImage = Boolean(fields.id.defaultValue)
 	const [previewImage, setPreviewImage] = useState<string | null>(
-		fields.id.defaultValue ? getNoteImgSrc(fields.id.defaultValue) : null,
+		fields.id.defaultValue ? getMatchImgSrc(fields.id.defaultValue) : null,
 	)
 
 	return (
 		<fieldset
 			ref={ref}
 			aria-invalid={Boolean(config.errors?.length) || undefined}
-			aria-describedby={config.errors?.length ? config.errorId : undefined}
+			aria-describedby={
+				config.errors?.length ? config.errorId : undefined
+			}
 		>
 			<div className="flex gap-3">
 				<div className="w-32">
 					<div className="relative h-32 w-32">
 						<label
 							htmlFor={fields.file.id}
-							className={cn('group absolute h-32 w-32 rounded-lg', {
-								'bg-accent opacity-40 focus-within:opacity-100 hover:opacity-100':
-									!previewImage,
-								'cursor-pointer focus-within:ring-2': !existingImage,
-							})}
+							className={cn(
+								"group absolute h-32 w-32 rounded-lg",
+								{
+									"bg-accent opacity-40 focus-within:opacity-100 hover:opacity-100":
+										!previewImage,
+									"cursor-pointer focus-within:ring-2":
+										!existingImage,
+								},
+							)}
 						>
 							{previewImage ? (
 								<div className="relative">
@@ -345,7 +370,7 @@ function ImageChooser({
 							{existingImage ? (
 								<input
 									{...conform.input(fields.id, {
-										type: 'hidden',
+										type: "hidden",
 										ariaAttributes: true,
 									})}
 								/>
@@ -359,7 +384,9 @@ function ImageChooser({
 									if (file) {
 										const reader = new FileReader()
 										reader.onloadend = () => {
-											setPreviewImage(reader.result as string)
+											setPreviewImage(
+												reader.result as string,
+											)
 										}
 										reader.readAsDataURL(file)
 									} else {
@@ -368,14 +395,17 @@ function ImageChooser({
 								}}
 								accept="image/*"
 								{...conform.input(fields.file, {
-									type: 'file',
+									type: "file",
 									ariaAttributes: true,
 								})}
 							/>
 						</label>
 					</div>
 					<div className="min-h-[32px] px-4 pb-3 pt-1">
-						<ErrorList id={fields.file.errorId} errors={fields.file.errors} />
+						<ErrorList
+							id={fields.file.errorId}
+							errors={fields.file.errors}
+						/>
 					</div>
 				</div>
 				{/* <div className="flex-1">

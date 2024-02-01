@@ -1,40 +1,43 @@
-import { useFormAction, useNavigation } from '@remix-run/react'
-import { clsx, type ClassValue } from 'clsx'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSpinDelay } from 'spin-delay'
-import { extendTailwindMerge } from 'tailwind-merge'
-import { extendedTheme } from './extended-theme.ts'
+import { useFormAction, useNavigation } from "@remix-run/react"
+import { clsx, type ClassValue } from "clsx"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { useSpinDelay } from "spin-delay"
+import { extendTailwindMerge } from "tailwind-merge"
+import { extendedTheme } from "./extended-theme.ts"
 
 export function getUserImgSrc(imageId?: string | null) {
-	return imageId ? `/resources/user-images/${imageId}` : '/img/user.png'
+	return imageId ? `/resources/user-images/${imageId}` : "/img/user.png"
 }
 
-export function getNoteImgSrc(imageId: string) {
-	return `/resources/note-images/${imageId}`
+export function getChatImgSrc(imageId: string) {
+	return `/resources/chat-images/${imageId}`
+}
+export function getMatchImgSrc(imageId: string) {
+	return `/resources/match-images/${imageId}`
 }
 
 export function getErrorMessage(error: unknown) {
-	if (typeof error === 'string') return error
+	if (typeof error === "string") return error
 	if (
 		error &&
-		typeof error === 'object' &&
-		'message' in error &&
-		typeof error.message === 'string'
+		typeof error === "object" &&
+		"message" in error &&
+		typeof error.message === "string"
 	) {
 		return error.message
 	}
-	console.error('Unable to get error message for error', error)
-	return 'Unknown Error'
+	console.error("Unable to get error message for error", error)
+	return "Unknown Error"
 }
 
 function formatColors() {
 	const colors = []
 	for (const [key, color] of Object.entries(extendedTheme.colors)) {
-		if (typeof color === 'string') {
+		if (typeof color === "string") {
 			colors.push(key)
 		} else {
 			const colorGroup = Object.keys(color).map(subKey =>
-				subKey === 'DEFAULT' ? '' : subKey,
+				subKey === "DEFAULT" ? "" : subKey,
 			)
 			colors.push({ [key]: colorGroup })
 		}
@@ -49,7 +52,7 @@ const customTwMerge = extendTailwindMerge<string, string>({
 			borderRadius: Object.keys(extendedTheme.borderRadius),
 		},
 		classGroups: {
-			'font-size': [
+			"font-size": [
 				{
 					text: Object.keys(extendedTheme.fontSize),
 				},
@@ -64,10 +67,10 @@ export function cn(...inputs: ClassValue[]) {
 
 export function getDomainUrl(request: Request) {
 	const host =
-		request.headers.get('X-Forwarded-Host') ??
-		request.headers.get('host') ??
+		request.headers.get("X-Forwarded-Host") ??
+		request.headers.get("host") ??
 		new URL(request.url).host
-	const protocol = host.includes('localhost') ? 'http' : 'https'
+	const protocol = host.includes("localhost") ? "http" : "https"
 	return `${protocol}://${host}`
 }
 
@@ -75,14 +78,14 @@ export function getReferrerRoute(request: Request) {
 	// spelling errors and whatever makes this annoyingly inconsistent
 	// in my own testing, `referer` returned the right value, but 🤷‍♂️
 	const referrer =
-		request.headers.get('referer') ??
-		request.headers.get('referrer') ??
+		request.headers.get("referer") ??
+		request.headers.get("referrer") ??
 		request.referrer
 	const domain = getDomainUrl(request)
 	if (referrer?.startsWith(domain)) {
 		return referrer.slice(domain.length)
 	} else {
-		return '/'
+		return "/"
 	}
 }
 
@@ -90,7 +93,7 @@ export function getReferrerRoute(request: Request) {
  * Merge multiple headers objects into one (uses set so headers are overridden)
  */
 export function mergeHeaders(
-	...headers: Array<ResponseInit['headers'] | null | undefined>
+	...headers: Array<ResponseInit["headers"] | null | undefined>
 ) {
 	const merged = new Headers()
 	for (const header of headers) {
@@ -106,7 +109,7 @@ export function mergeHeaders(
  * Combine multiple header objects into one (uses append so headers are not overridden)
  */
 export function combineHeaders(
-	...headers: Array<ResponseInit['headers'] | null | undefined>
+	...headers: Array<ResponseInit["headers"] | null | undefined>
 ) {
 	const combined = new Headers()
 	for (const header of headers) {
@@ -146,18 +149,18 @@ export function combineResponseInits(
  */
 export function useIsPending({
 	formAction,
-	formMethod = 'POST',
-	state = 'non-idle',
+	formMethod = "POST",
+	state = "non-idle",
 }: {
 	formAction?: string
-	formMethod?: 'POST' | 'GET' | 'PUT' | 'PATCH' | 'DELETE'
-	state?: 'submitting' | 'loading' | 'non-idle'
+	formMethod?: "POST" | "GET" | "PUT" | "PATCH" | "DELETE"
+	state?: "submitting" | "loading" | "non-idle"
 } = {}) {
 	const contextualFormAction = useFormAction()
 	const navigation = useNavigation()
 	const isPendingState =
-		state === 'non-idle'
-			? navigation.state !== 'idle'
+		state === "non-idle"
+			? navigation.state !== "idle"
 			: navigation.state === state
 	return (
 		isPendingState &&
@@ -207,10 +210,10 @@ export function useDoubleCheck() {
 	function getButtonProps(
 		props?: React.ButtonHTMLAttributes<HTMLButtonElement>,
 	) {
-		const onBlur: React.ButtonHTMLAttributes<HTMLButtonElement>['onBlur'] =
+		const onBlur: React.ButtonHTMLAttributes<HTMLButtonElement>["onBlur"] =
 			() => setDoubleCheck(false)
 
-		const onClick: React.ButtonHTMLAttributes<HTMLButtonElement>['onClick'] =
+		const onClick: React.ButtonHTMLAttributes<HTMLButtonElement>["onClick"] =
 			doubleCheck
 				? undefined
 				: e => {
@@ -218,9 +221,9 @@ export function useDoubleCheck() {
 						setDoubleCheck(true)
 					}
 
-		const onKeyUp: React.ButtonHTMLAttributes<HTMLButtonElement>['onKeyUp'] =
+		const onKeyUp: React.ButtonHTMLAttributes<HTMLButtonElement>["onKeyUp"] =
 			e => {
-				if (e.key === 'Escape') {
+				if (e.key === "Escape") {
 					setDoubleCheck(false)
 				}
 			}
@@ -277,9 +280,11 @@ export async function downloadFile(url: string, retries: number = 0) {
 	try {
 		const response = await fetch(url)
 		if (!response.ok) {
-			throw new Error(`Failed to fetch image with status ${response.status}`)
+			throw new Error(
+				`Failed to fetch image with status ${response.status}`,
+			)
 		}
-		const contentType = response.headers.get('content-type') ?? 'image/jpg'
+		const contentType = response.headers.get("content-type") ?? "image/jpg"
 		const blob = Buffer.from(await response.arrayBuffer())
 		return { contentType, blob }
 	} catch (e) {

@@ -23,7 +23,7 @@ import { Icon } from "#app/components/ui/icon.tsx"
 import { StatusButton } from "#app/components/ui/status-button.tsx"
 // import { requireUserId } from "#app/utils/auth.server.ts"
 import { prisma } from "#app/utils/db.server.ts"
-import { getNoteImgSrc, useIsPending } from "#app/utils/misc.tsx"
+import { getChatImgSrc, useIsPending } from "#app/utils/misc.tsx"
 import { requireUserWithPermission } from "#app/utils/permissions.server.ts"
 import { redirectWithToast } from "#app/utils/toast.server.ts"
 import { userHasPermission, useOptionalUser } from "#app/utils/user.ts"
@@ -116,9 +116,9 @@ export default function ChatRoute() {
 				<ul className="flex flex-wrap gap-5 py-5">
 					{data.chat.images.map(image => (
 						<li key={image.id}>
-							<a href={getNoteImgSrc(image.id)}>
+							<a href={getChatImgSrc(image.id)}>
 								<img
-									src={getNoteImgSrc(image.id)}
+									src={getChatImgSrc(image.id)}
 									alt="chat"
 									className="h-32 w-32 rounded-lg object-cover"
 								/>

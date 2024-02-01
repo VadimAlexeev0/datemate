@@ -28,7 +28,7 @@ import { Icon } from "#app/components/ui/icon.tsx"
 import { Label } from "#app/components/ui/label.tsx"
 import { StatusButton } from "#app/components/ui/status-button.tsx"
 import { prisma } from "#app/utils/db.server.ts"
-import { cn, getNoteImgSrc, useIsPending } from "#app/utils/misc.tsx"
+import { cn, getChatImgSrc, useIsPending } from "#app/utils/misc.tsx"
 
 const titleMinLength = 1
 const titleMaxLength = 100
@@ -61,7 +61,7 @@ function imageHasId(
 	return image.id != null
 }
 
-const ChatEditorSchema = z.object({
+const NoteEditorSchema = z.object({
 	id: z.string().optional(),
 	matchId: z.string(),
 	title: z.string().min(titleMinLength).max(titleMaxLength),
@@ -78,17 +78,17 @@ export async function action({ request }: ActionFunctionArgs) {
 	)
 
 	const submission = await parse(formData, {
-		schema: ChatEditorSchema.superRefine(async (data, ctx) => {
+		schema: NoteEditorSchema.superRefine(async (data, ctx) => {
 			if (!data.id) return
-			// TODO CHECK if correct match
-			const note = await prisma.chat.findUnique({
+
+			const chat = await prisma.chat.findUnique({
 				select: { id: true },
 				where: { id: data.id },
 			})
-			if (!note) {
+			if (!chat) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
-					message: "Note not found",
+					message: "Chat not found",
 				})
 			}
 		}).transform(async ({ images = [], ...data }) => {
@@ -144,8 +144,8 @@ export async function action({ request }: ActionFunctionArgs) {
 		newImages = [],
 	} = submission.value
 
-	const updatedChat = await prisma.chat.upsert({
-		select: { id: true },
+	const updatedNote = await prisma.chat.upsert({
+		select: { id: true, matchId: true },
 		where: { id: chatId ?? "__new_chat__" },
 		create: {
 			matchId,
@@ -170,27 +170,29 @@ export async function action({ request }: ActionFunctionArgs) {
 		},
 	})
 
-	return redirect(`/matches/${matchId}/chats/${updatedChat.id}`)
+	return redirect(`/matches/${updatedNote.matchId}/chats/${updatedNote.id}`)
 }
 
 export function ChatEditor({
 	chat,
+	matchId,
 }: {
 	chat?: SerializeFrom<
 		Pick<Chat, "id" | "title" | "content" | "matchId"> & {
 			images: Array<Pick<ChatImage, "id">>
 		}
 	>
+	matchId: Chat["matchId"]
 }) {
 	const actionData = useActionData<typeof action>()
 	const isPending = useIsPending()
 
 	const [form, fields] = useForm({
 		id: "chat-editor",
-		constraint: getFieldsetConstraint(ChatEditorSchema),
+		constraint: getFieldsetConstraint(NoteEditorSchema),
 		lastSubmission: actionData?.submission,
 		onValidate({ formData }) {
-			return parse(formData, { schema: ChatEditorSchema })
+			return parse(formData, { schema: NoteEditorSchema })
 		},
 		defaultValue: {
 			title: chat?.title ?? "",
@@ -214,15 +216,9 @@ export function ChatEditor({
 					rather than the first button in the form (which is delete/add image).
 				*/}
 				<button type="submit" className="hidden" />
+				<input type="hidden" name="matchId" value={matchId} />
 				{chat ? (
-					<>
-						<input type="hidden" name="id" value={chat.id} />
-						<input
-							type="hidden"
-							name="matchId"
-							value={chat.matchId}
-						/>
-					</>
+					<input type="hidden" name="id" value={chat.id} />
 				) : null}
 				<div className="flex flex-col gap-1">
 					<Field
@@ -310,7 +306,7 @@ function ImageChooser({
 	const fields = useFieldset(ref, config)
 	const existingImage = Boolean(fields.id.defaultValue)
 	const [previewImage, setPreviewImage] = useState<string | null>(
-		fields.id.defaultValue ? getNoteImgSrc(fields.id.defaultValue) : null,
+		fields.id.defaultValue ? getChatImgSrc(fields.id.defaultValue) : null,
 	)
 
 	return (
@@ -340,7 +336,7 @@ function ImageChooser({
 								<div className="relative">
 									<img
 										src={previewImage}
-										alt="Preview"
+										alt={"Preview"}
 										className="h-32 w-32 rounded-lg object-cover"
 									/>
 									{existingImage ? null : (
@@ -399,7 +395,9 @@ function ImageChooser({
 					<Label htmlFor={fields.altText.id}>Alt Text</Label>
 					<Textarea
 						onChange={e => setAltText(e.currentTarget.value)}
-						{...conform.textarea(fields.altText, { ariaAttributes: true })}
+						{...conform.textarea(fields.altText, {
+							ariaAttributes: true,
+						})}
 					/>
 					<div className="min-h-[32px] px-4 pb-3 pt-1">
 						<ErrorList
@@ -421,7 +419,7 @@ export function ErrorBoundary() {
 		<GeneralErrorBoundary
 			statusHandlers={{
 				404: ({ params }) => (
-					<p>No note with the id "{params.noteId}" exists</p>
+					<p>No chat with the id "{params.noteId}" exists</p>
 				),
 			}}
 		/>
